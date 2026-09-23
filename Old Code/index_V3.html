@@ -1210,12 +1210,6 @@
               <label>Site / Location</label>
               <input type="text" id="cert-site" placeholder="e.g. Building A, Andheri West" oninput="certState.site=this.value;"/>
             </div>
-            <div class="form-group">
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;cursor:pointer;">
-                <input type="checkbox" id="cert-show-sign-stamp" checked onchange="certState.showSignStamp=this.checked;certState.isSaved=false;" style="width:16px;height:16px;cursor:pointer;"/>
-                Include Sign &amp; Stamp
-              </label>
-            </div>
           </div>
         </div>
       </div>
@@ -1342,13 +1336,6 @@
             <div class="form-group">
               <label>Ref. Invoice / Challan No. (Optional)</label>
               <input type="text" id="qt-ref-no" placeholder="e.g. INV/26-27/003" oninput="quotState.refNo=this.value;"/>
-            </div>
-            <div class="form-group">
-              <label>&nbsp;</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;cursor:pointer;">
-                <input type="checkbox" id="qt-show-sign-stamp" checked onchange="quotState.showSignStamp=this.checked;quotState.isSaved=false;" style="width:16px;height:16px;cursor:pointer;"/>
-                Include Sign &amp; Stamp
-              </label>
             </div>
           </div>
         </div>
@@ -1526,12 +1513,6 @@
               <label>Reason for Issue (printed on note)</label>
               <textarea id="cn-reason" rows="2" placeholder="e.g. Goods returned / Rate difference / Short billing…" oninput="cnState.reason=this.value;cnState.isSaved=false;"></textarea>
             </div>
-            <div class="form-group">
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;cursor:pointer;">
-                <input type="checkbox" id="cn-show-sign-stamp" checked onchange="cnState.showSignStamp=this.checked;cnState.isSaved=false;" style="width:16px;height:16px;cursor:pointer;"/>
-                Include Sign &amp; Stamp
-              </label>
-            </div>
           </div>
         </div>
       </div>
@@ -1689,13 +1670,6 @@
                 <option value="IGST">IGST</option>
                 <option value="NO_GST">No GST</option>
               </select>
-            </div>
-            <div class="form-group">
-              <label>&nbsp;</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;cursor:pointer;">
-                <input type="checkbox" id="inv-show-sign-stamp" checked onchange="invState.showSignStamp=this.checked;invState.isSaved=false;" style="width:16px;height:16px;cursor:pointer;"/>
-                Include Sign &amp; Stamp
-              </label>
             </div>
           </div>
         </div>
@@ -2117,6 +2091,13 @@
           <div style="font-size:11px;color:var(--text3);margin-top:8px;">
             Signature and Stamp photos have their background automatically removed (based on the color sampled from the photo's corners) so they overlay cleanly on printed invoices and certificates instead of showing as a solid box. For best results, photograph them against one plain, even-colored background.
           </div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;cursor:pointer;">
+            <input type="checkbox" id="settings-show-sign-stamp" checked style="width:16px;height:16px;cursor:pointer;"/>
+            Show Signature &amp; Stamp on printed/emailed PDFs
+          </label>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">
+            When off, invoices, quotations, credit/debit notes and certificates print and email without the Signature/Stamp images above — everything else (Authorised Signatory line, company seal box) stays the same.
+          </div>
         </div>
         <div class="modal-footer" style="justify-content:flex-end;">
           <button class="btn btn-primary" id="settings-branding-save-btn" onclick="saveBrandingSettings()">Save</button>
@@ -2393,7 +2374,7 @@ let COMPANY = {
   name:'', address:'', gstin:'', state:'', stateCode:'',
   phone:'', email:'', website:'', bank:'',
   acctName:'', acctNo:'', ifsc:'', upi:'', pan:'', logo:'', signature:'', calendarId:'', stamp:'', watermark:'',
-  watermarkSrc:'', watermarkStyle:'tilted'
+  watermarkSrc:'', watermarkStyle:'tilted', showSignStamp:true
 };
 
 function escapeHtml(text){return String(text==null?'':text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -2418,7 +2399,7 @@ let invState = {
   buyer:{ name:'', address:'', gstin:'', state:'Maharashtra', stateCode:'27', phone:'', email:'' },
   taxes:{ cgst:9, sgst:9, igst:0 },
   lineItems:[], isSaved:false, savedBuyers:[], buyerSearchTimeout:null,
-  editMode:false, originalInvoiceNo:'', showSignStamp:true
+  editMode:false, originalInvoiceNo:''
 };
 // Guarantees unique line-item ids even when several rows are created in the
 // same millisecond (e.g. bulk-loading items while opening Edit Invoice/Challan).
@@ -2504,6 +2485,8 @@ function applyCompanyToUI(){
   const style=COMPANY.watermarkStyle||'tilted';
   const styleRadio=document.querySelector('input[name="settings-watermark-style"][value="'+style+'"]');
   if(styleRadio) styleRadio.checked=true;
+  const showSignStampBox=document.getElementById('settings-show-sign-stamp');
+  if(showSignStampBox) showSignStampBox.checked=COMPANY.showSignStamp!==false;
 }
 
 // Shows the currently-saved (or just-uploaded) image for a branding field,
@@ -2524,7 +2507,8 @@ function saveCalendarSettings(){
   btn.disabled=true; btn.textContent='Saving…';
   gasPostAMC('saveCompanySettings',{data:{
     pan:COMPANY.pan||'', logo:COMPANY.logo||'', signature:COMPANY.signature||'',
-    stamp:COMPANY.stamp||'', watermark:COMPANY.watermark||'', calendarId
+    stamp:COMPANY.stamp||'', watermark:COMPANY.watermark||'', calendarId,
+    showSignStamp:COMPANY.showSignStamp!==false
   }}).then(d=>{
     btn.disabled=false; btn.textContent='Save';
     if(d.success){
@@ -2646,6 +2630,7 @@ function saveBrandingSettings(){
   const logo=document.getElementById('settings-logo-value').value||'';
   const signature=document.getElementById('settings-signature-value').value||'';
   const stamp=document.getElementById('settings-stamp-value').value||'';
+  const showSignStamp=document.getElementById('settings-show-sign-stamp').checked;
   const btn=document.getElementById('settings-branding-save-btn');
   btn.disabled=true; btn.textContent='Saving…';
   // Watermark has its own Save button/card now — pass the existing value
@@ -2653,7 +2638,7 @@ function saveBrandingSettings(){
   gasPostAMC('saveCompanySettings',{data:{
     pan:COMPANY.pan||'', logo, signature, stamp, watermark:COMPANY.watermark||'',
     watermarkSrc:COMPANY.watermarkSrc||'', watermarkStyle:COMPANY.watermarkStyle||'tilted',
-    calendarId:COMPANY.calendarId||''
+    calendarId:COMPANY.calendarId||'', showSignStamp
   }}).then(d=>{
     btn.disabled=false; btn.textContent='Save';
     if(d.success){
@@ -2663,6 +2648,7 @@ function saveBrandingSettings(){
       // multi-hundred-KB data URI.
       const saved=d.company||{};
       COMPANY.logo=saved.logo||''; COMPANY.signature=saved.signature||''; COMPANY.stamp=saved.stamp||'';
+      COMPANY.showSignStamp=saved.showSignStamp!==false;
       document.getElementById('settings-logo-value').value=COMPANY.logo;
       document.getElementById('settings-signature-value').value=COMPANY.signature;
       document.getElementById('settings-stamp-value').value=COMPANY.stamp;
@@ -2737,7 +2723,7 @@ function saveWatermarkSettings(){
   gasPostAMC('saveCompanySettings',{data:{
     pan:COMPANY.pan||'', logo:COMPANY.logo||'', signature:COMPANY.signature||'',
     stamp:COMPANY.stamp||'', calendarId:COMPANY.calendarId||'',
-    watermarkSrc, watermarkStyle, watermark
+    watermarkSrc, watermarkStyle, watermark, showSignStamp:COMPANY.showSignStamp!==false
   }}).then(d=>{
     btn.disabled=false; btn.textContent='Save';
     if(d.success){
@@ -2883,7 +2869,7 @@ function openNewInvoicePage(){
   invState.buyer={name:'',address:'',gstin:'',state:'Maharashtra',stateCode:'27',phone:'',email:''};
   invState.taxes={cgst:9,sgst:9,igst:0};
   invState.lineItems=[];invState.isSaved=false;
-  invState.editMode=false;invState.originalInvoiceNo='';invState.showSignStamp=true;
+  invState.editMode=false;invState.originalInvoiceNo='';
   const ititle=document.getElementById('inv-page-title');if(ititle)ititle.textContent='New Invoice';
   const hlbl=document.getElementById('header-save-btn-label');if(hlbl)hlbl.textContent='Save';
   const plbl=document.getElementById('page-save-btn-label');if(plbl)plbl.textContent='Save Invoice';
@@ -2893,7 +2879,6 @@ function openNewInvoicePage(){
   ['inv-no','inv-challan','buyer-name','buyer-address','buyer-gstin','buyer-phone','buyer-email'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('inv-date').value=invState.invoiceMeta.date;
   document.getElementById('inv-gst-type').value='CGST_SGST';
-  document.getElementById('inv-show-sign-stamp').checked=true;
   document.getElementById('buyer-state').value='Maharashtra';
   document.getElementById('tax-cgst').value=9; document.getElementById('tax-sgst').value=9; document.getElementById('tax-igst').value=0;
   document.getElementById('buyer-dropdown').style.display='none';
@@ -3630,7 +3615,7 @@ async function handleSaveToSheets(){
       sgstRate:totals.sgstRate, sgstAmount:totals.sgstAmt,
       igstRate:totals.igstRate, igstAmount:totals.igstAmt,
       taxAmount:totals.cgstAmt+totals.sgstAmt+totals.igstAmt, grandTotal:totals.grandTotal,
-      items:cleanItems, showSignStamp:invState.showSignStamp
+      items:cleanItems
     }
   };
   try{
@@ -3685,7 +3670,7 @@ async function handleUpdateInvoiceToSheets(){
       sgstRate:totals.sgstRate, sgstAmount:totals.sgstAmt,
       igstRate:totals.igstRate, igstAmount:totals.igstAmt,
       taxAmount:totals.cgstAmt+totals.sgstAmt+totals.igstAmt, grandTotal:totals.grandTotal,
-      items:cleanItems, showSignStamp:invState.showSignStamp
+      items:cleanItems
     }
   };
   try{
@@ -3720,8 +3705,7 @@ function handlePrint(){
     buyerPhone:invState.buyer.phone, buyerEmail:invState.buyer.email,
     subTotal:t.subTotal, cgstRate:t.cgstRate, sgstRate:t.sgstRate, igstRate:t.igstRate,
     cgstAmount:t.cgstAmt, sgstAmount:t.sgstAmt, igstAmount:t.igstAmt, grandTotal:t.grandTotal,
-    items:invState.lineItems.map(item=>({desc:item.desc||'',hsn:item.hsn||'',qty:item.qty,rate:item.rate,unit:item.unit||'Nos',amount:(parseFloat(item.qty)||0)*(parseFloat(item.rate)||0)})),
-    showSignStamp:invState.showSignStamp
+    items:invState.lineItems.map(item=>({desc:item.desc||'',hsn:item.hsn||'',qty:item.qty,rate:item.rate,unit:item.unit||'Nos',amount:(parseFloat(item.qty)||0)*(parseFloat(item.rate)||0)}))
   });
 }
 
@@ -3742,7 +3726,7 @@ async function reprintInvoice(invoiceNo){
       buyerPhone:inv['Buyer Phone']||'', buyerEmail:inv['Buyer Email']||'',
       subTotal:inv['Sub Total'], cgstRate:inv['CGST Rate'], sgstRate:inv['SGST Rate'], igstRate:inv['IGST Rate'],
       cgstAmount:inv['CGST Amount'], sgstAmount:inv['SGST Amount'], igstAmount:inv['IGST Amount'],
-      grandTotal:inv['Grand Total'], items, showSignStamp:inv['Show Sign Stamp']!=='No'
+      grandTotal:inv['Grand Total'], items
     });
   }catch(e){showToast('Failed to load invoice for print.','error');}
 }
@@ -3775,7 +3759,7 @@ async function viewInvoice(invoiceNo){
       buyerPhone:inv['Buyer Phone']||'', buyerEmail:inv['Buyer Email']||'',
       subTotal:inv['Sub Total'], cgstRate:inv['CGST Rate'], sgstRate:inv['SGST Rate'], igstRate:inv['IGST Rate'],
       cgstAmount:inv['CGST Amount'], sgstAmount:inv['SGST Amount'], igstAmount:inv['IGST Amount'],
-      grandTotal:inv['Grand Total'], items, showSignStamp:inv['Show Sign Stamp']!=='No'
+      grandTotal:inv['Grand Total'], items
     };
     const cgstAmt=parseFloat(inv['CGST Amount']||0), sgstAmt=parseFloat(inv['SGST Amount']||0), igstAmt=parseFloat(inv['IGST Amount']||0);
     const itemsRowsHtml=items.map((it,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(it.desc||'')}</td><td>${escapeHtml(it.hsn||'')}</td><td style="text-align:right;">${escapeHtml(it.qty)}</td><td style="text-align:right;">₹${parseFloat(it.rate||0).toFixed(2)}</td><td>${escapeHtml(it.unit||'Nos')}</td><td style="text-align:right;font-weight:600;">₹${parseFloat(it.amount||0).toLocaleString('en-IN')}</td></tr>`).join('');
@@ -3871,13 +3855,11 @@ async function editInvoice(invoiceNo){
     invState.taxes={cgst:cgstRate||9, sgst:sgstRate||9, igst:igstRate||0};
     invState.lineItems=[]; invState.isSaved=true;
     invState.editMode=true; invState.originalInvoiceNo=inv['Invoice No']||'';
-    invState.showSignStamp=inv['Show Sign Stamp']!=='No';
 
     document.getElementById('inv-no').value=invState.invoiceMeta.invoiceNo;
     document.getElementById('inv-date').value=invState.invoiceMeta.date;
     document.getElementById('inv-challan').value=invState.invoiceMeta.challanNo;
     document.getElementById('inv-gst-type').value=(!cgstRate&&!sgstRate&&!igstRate)?'NO_GST':(igstRate>0?'IGST':'CGST_SGST');
-    document.getElementById('inv-show-sign-stamp').checked=invState.showSignStamp;
     document.getElementById('buyer-name').value=invState.buyer.name;
     document.getElementById('buyer-address').value=invState.buyer.address;
     document.getElementById('buyer-gstin').value=invState.buyer.gstin;
@@ -4195,7 +4177,7 @@ var LedgerPrint = (function () {
         email: company.email || '', website: company.website || '',
         pan: company.pan || '', logo: company.logo || '',
         signature: company.signature || '', stamp: company.stamp || '',
-        watermark: company.watermark || ''
+        watermark: company.watermark || '', showSignStamp: company.showSignStamp !== false
       },
       bank: {
         accountName: company.acctName || company.name || '',
@@ -4224,12 +4206,7 @@ var LedgerPrint = (function () {
         placeOfSupply: data.placeOfSupply || data.buyerState || '',
         placeOfSupplyCode: data.stateCode || '',
         paymentTerms: data.paymentTerms || '', dueDate: data.dueDate || '',
-        reverseCharge: !!data.reverseCharge,
-        // Per-document opt-out, set on the New/Edit form when this document
-        // was saved — NOT a tenant-wide setting. Missing/undefined stays
-        // true so a document saved before this feature existed still prints
-        // its sign/stamp exactly as before.
-        showSignStamp: data.showSignStamp !== false
+        reverseCharge: !!data.reverseCharge
       },
       lines: lines,
       intra: intra, invoiceRate: invoiceRate,
@@ -4561,7 +4538,7 @@ var LedgerPrint = (function () {
     // below) — the old 16mm wrapper overran that, and with .inv-page/
     // .inv-bank both overflow:hidden, "Authorised signatory" got clipped.
     var sigStampHtml = '';
-    if (inv.meta.showSignStamp !== false) {
+    if (inv.seller.showSignStamp !== false) {
       if (inv.seller.stamp && inv.seller.signature) {
         sigStampHtml = '<div style="position:relative;width:26mm;height:11mm;">' +
           '<img src="' + inv.seller.stamp + '" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-height:11mm;max-width:11mm;z-index:1;">' +
@@ -5298,8 +5275,7 @@ function handlePreviewInvoice(){
     buyerPhone:invState.buyer.phone, buyerEmail:invState.buyer.email,
     subTotal:t.subTotal, cgstRate:t.cgstRate, sgstRate:t.sgstRate, igstRate:t.igstRate,
     cgstAmount:t.cgstAmt, sgstAmount:t.sgstAmt, igstAmount:t.igstAmt, grandTotal:t.grandTotal,
-    items:invState.lineItems.map(item=>({desc:item.desc||'',hsn:item.hsn||'',qty:item.qty,rate:item.rate,unit:item.unit||'Nos',amount:(parseFloat(item.qty)||0)*(parseFloat(item.rate)||0)})),
-    showSignStamp:invState.showSignStamp
+    items:invState.lineItems.map(item=>({desc:item.desc||'',hsn:item.hsn||'',qty:item.qty,rate:item.rate,unit:item.unit||'Nos',amount:(parseFloat(item.qty)||0)*(parseFloat(item.rate)||0)}))
   });
 }
 
@@ -5327,7 +5303,7 @@ let quotState = {
   validUntil:'', refNo:'', notes:'',
   buyer:{name:'',address:'',gstin:'',state:'Maharashtra',phone:'',email:''},
   lineItems:[], isSaved:false, buyerSearchTimeout:null,
-  editMode:false, originalQuotNo:'', showSignStamp:true
+  editMode:false, originalQuotNo:''
 };
 let liveQuotations=[];
 
@@ -5342,7 +5318,7 @@ function openNewQuotationPage(){
     validUntil:'', refNo:'', notes:'',
     buyer:{name:'',address:'',gstin:'',state:'Maharashtra',phone:'',email:''},
     lineItems:[], isSaved:false, buyerSearchTimeout:null,
-    editMode:false, originalQuotNo:'', showSignStamp:true
+    editMode:false, originalQuotNo:''
   };
   const ss=document.getElementById('quot-save-status');if(ss){ss.textContent='● Unsaved';ss.style.color='var(--text3)';}
   const qtl=document.getElementById('quot-page-title');if(qtl)qtl.textContent='New Quotation';
@@ -5351,7 +5327,6 @@ function openNewQuotationPage(){
   ['qt-no','qt-ref-no','qt-buyer-name','qt-buyer-address','qt-buyer-gstin','qt-buyer-phone','qt-buyer-email','qt-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('qt-date').value=quotState.date;
   document.getElementById('qt-valid-until').value='';
-  document.getElementById('qt-show-sign-stamp').checked=true;
   document.getElementById('qt-buyer-state').value='Maharashtra';
   document.getElementById('qt-buyer-dropdown').style.display='none';
   document.getElementById('quot-items').innerHTML='';
@@ -5576,8 +5551,7 @@ async function handleSaveQuotation(){
     subTotal:subTotal.toFixed(2),
     taxTotal:taxTotal.toFixed(2),
     grandTotal:grandTotal.toFixed(2),
-    itemsJson:JSON.stringify(cleanItems),
-    showSignStamp:quotState.showSignStamp
+    itemsJson:JSON.stringify(cleanItems)
   };
 
   try{
@@ -5679,8 +5653,7 @@ function handlePreviewQuotation(){
     buyerState:quotState.buyer.state,
     buyerPhone:quotState.buyer.phone,
     buyerEmail:quotState.buyer.email,
-    subTotal,taxTotal,grandTotal,items:cleanItems,
-    showSignStamp:document.getElementById('qt-show-sign-stamp').checked
+    subTotal,taxTotal,grandTotal,items:cleanItems
   };
   const htmlContent=buildQuotationHtml(printData);
   const old=document.getElementById('_print_frame_quot');if(old)old.parentNode.removeChild(old);
@@ -5712,8 +5685,7 @@ function handlePrintQuotation(){
     quotNo:quotState.quotNo,date:quotState.date,validUntil:quotState.validUntil,refNo:quotState.refNo,notes:quotState.notes,
     buyerName:quotState.buyer.name,buyerAddress:quotState.buyer.address,buyerGstin:quotState.buyer.gstin,
     buyerState:quotState.buyer.state,buyerPhone:quotState.buyer.phone,buyerEmail:quotState.buyer.email,
-    subTotal,taxTotal,grandTotal,items:cleanItems,
-    showSignStamp:quotState.showSignStamp
+    subTotal,taxTotal,grandTotal,items:cleanItems
   };
   const htmlContent=buildQuotationHtml(printData);
   const old=document.getElementById('_print_frame_quot');if(old)old.parentNode.removeChild(old);
@@ -5802,8 +5774,7 @@ async function reprintQuotation(quotNo){
       buyerGstin:qt['Buyer GSTIN']||'', buyerState:qt['Buyer State']||'',
       buyerPhone:qt['Buyer Phone']||'', buyerEmail:qt['Buyer Email']||'',
       subTotal:parseFloat(qt['Sub Total']||0), taxTotal:parseFloat(qt['Tax Total']||0),
-      grandTotal:parseFloat(qt['Grand Total']||0), items,
-      showSignStamp:qt['Show Sign Stamp']!=='No'
+      grandTotal:parseFloat(qt['Grand Total']||0), items
     };
     const htmlContent=buildQuotationHtml(printData);
     const old=document.getElementById('_print_frame_quot');if(old)old.parentNode.removeChild(old);
@@ -5841,15 +5812,13 @@ async function editQuotation(quotNo){
       validUntil:toDateInputValue(qt['Valid Until']), refNo:qt['Ref No']||'', notes:qt['Notes']||'',
       buyer:{name:qt['Buyer Name']||'',address:qt['Buyer Address']||'',gstin:qt['Buyer GSTIN']||'',state:qt['Buyer State']||'Maharashtra',phone:qt['Buyer Phone']||'',email:qt['Buyer Email']||''},
       lineItems:[], isSaved:true, buyerSearchTimeout:null,
-      editMode:true, originalQuotNo:qt['Quotation No']||'',
-      showSignStamp:qt['Show Sign Stamp']!=='No'
+      editMode:true, originalQuotNo:qt['Quotation No']||''
     };
 
     document.getElementById('qt-no').value=quotState.quotNo;
     document.getElementById('qt-date').value=quotState.date;
     document.getElementById('qt-valid-until').value=quotState.validUntil;
     document.getElementById('qt-ref-no').value=quotState.refNo;
-    document.getElementById('qt-show-sign-stamp').checked=quotState.showSignStamp;
     document.getElementById('qt-notes').value=quotState.notes;
     document.getElementById('qt-buyer-name').value=quotState.buyer.name;
     document.getElementById('qt-buyer-address').value=quotState.buyer.address;
@@ -5936,7 +5905,7 @@ let cnState = {
   againstInvoiceNo:'', againstInvoiceDate:'', reason:'',
   buyer:{name:'',address:'',gstin:'',state:'Maharashtra',stateCode:'27',phone:'',email:''},
   taxes:{cgst:9,sgst:9,igst:0},
-  lineItems:[], isSaved:false, buyerSearchTimeout:null, showSignStamp:true
+  lineItems:[], isSaved:false, buyerSearchTimeout:null
 };
 let liveCreditNotes=[];
 
@@ -5954,7 +5923,7 @@ function openNewCreditNotePage(){
     againstInvoiceNo:'', againstInvoiceDate:'', reason:'',
     buyer:{name:'',address:'',gstin:'',state:'Maharashtra',stateCode:'27',phone:'',email:''},
     taxes:{cgst:9,sgst:9,igst:0},
-    lineItems:[], isSaved:false, buyerSearchTimeout:null, showSignStamp:true
+    lineItems:[], isSaved:false, buyerSearchTimeout:null
   };
   const ss=document.getElementById('cn-save-status');if(ss){ss.textContent='● Unsaved';ss.style.color='var(--text3)';}
 
@@ -5963,7 +5932,6 @@ function openNewCreditNotePage(){
   ['cn-no','cn-ref-invoice-no','cn-reason','cn-buyer-name','cn-buyer-address','cn-buyer-gstin','cn-buyer-phone','cn-buyer-email'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('cn-date').value=cnState.date;
   document.getElementById('cn-ref-invoice-date').value='';
-  document.getElementById('cn-show-sign-stamp').checked=true;
   document.getElementById('cn-buyer-state').value='Maharashtra';
   document.getElementById('cn-gst-type').value='CGST_SGST';
   document.getElementById('cn-tax-cgst').value=9;
@@ -6228,7 +6196,7 @@ async function handleSaveCreditNote(){
       sgstRate:totals.sgstRate, sgstAmount:totals.sgstAmt,
       igstRate:totals.igstRate, igstAmount:totals.igstAmt,
       taxAmount:totals.cgstAmt+totals.sgstAmt+totals.igstAmt, grandTotal:totals.grandTotal,
-      items:cleanItems, showSignStamp:cnState.showSignStamp
+      items:cleanItems
     }
   };
 
@@ -6269,8 +6237,7 @@ function handlePreviewCreditNote(){
     subTotal:totals.subTotal, cgstRate:totals.cgstRate, cgstAmount:totals.cgstAmt,
     sgstRate:totals.sgstRate, sgstAmount:totals.sgstAmt,
     igstRate:totals.igstRate, igstAmount:totals.igstAmt,
-    grandTotal:totals.grandTotal, items:cleanItems,
-    showSignStamp:document.getElementById('cn-show-sign-stamp').checked
+    grandTotal:totals.grandTotal, items:cleanItems
   });
 }
 
@@ -6292,8 +6259,7 @@ function handlePrintCreditNote(){
     subTotal:totals.subTotal, cgstRate:totals.cgstRate, cgstAmount:totals.cgstAmt,
     sgstRate:totals.sgstRate, sgstAmount:totals.sgstAmt,
     igstRate:totals.igstRate, igstAmount:totals.igstAmt,
-    grandTotal:totals.grandTotal, items:cleanItems,
-    showSignStamp:cnState.showSignStamp
+    grandTotal:totals.grandTotal, items:cleanItems
   });
 }
 
@@ -6367,8 +6333,7 @@ async function reprintCreditNote(noteNo){
       cgstRate:parseFloat(n['CGST Rate']||0), cgstAmount:parseFloat(n['CGST Amount']||0),
       sgstRate:parseFloat(n['SGST Rate']||0), sgstAmount:parseFloat(n['SGST Amount']||0),
       igstRate:parseFloat(n['IGST Rate']||0), igstAmount:parseFloat(n['IGST Amount']||0),
-      grandTotal:parseFloat(n['Grand Total']||0), items,
-      showSignStamp:n['Show Sign Stamp']!=='No'
+      grandTotal:parseFloat(n['Grand Total']||0), items
     });
   }catch(e){showToast('Could not load note.','error');}
 }
@@ -6923,7 +6888,7 @@ let certState = {
   recipient:{name:'',address:'',phone:'',email:'',gstin:''},
   items:[],
   isSaved:false, buyerSearchTimeout:null,
-  editMode:false, originalCertNo:'', showSignStamp:true
+  editMode:false, originalCertNo:''
 };
 let liveCertificates=[];
 
@@ -6940,7 +6905,7 @@ function openNewCertificatePage(){
     recipient:{name:'',address:'',phone:'',email:'',gstin:''},
     items:[],
     isSaved:false, buyerSearchTimeout:null,
-    editMode:false, originalCertNo:'', showSignStamp:true
+    editMode:false, originalCertNo:''
   };
   const ss=document.getElementById('cert-save-status');if(ss){ss.textContent='● Unsaved';ss.style.color='var(--text3)';}
   const tl=document.getElementById('cert-page-title');if(tl)tl.textContent='New Certificate';
@@ -6949,7 +6914,6 @@ function openNewCertificatePage(){
   ['cert-no','cert-ref-no','cert-site','cert-recipient-name','cert-recipient-address','cert-recipient-phone','cert-recipient-email','cert-recipient-gstin','cert-remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('cert-issue-date').value=certState.issueDate;
   document.getElementById('cert-valid-until').value='';
-  document.getElementById('cert-show-sign-stamp').checked=true;
   document.getElementById('cert-type').value='Refilling';
   document.getElementById('cert-recipient-dropdown').style.display='none';
   document.getElementById('cert-no-status').textContent='';
@@ -7131,8 +7095,7 @@ async function handleSaveCertificate(){
     recipientAddress:certState.recipient.address||'',
     recipientPhone:certState.recipient.phone||'',
     recipientEmail:certState.recipient.email||'',
-    recipientGstin:certState.recipient.gstin||'',
-    showSignStamp:certState.showSignStamp
+    recipientGstin:certState.recipient.gstin||''
   };
 
   try{
@@ -7306,8 +7269,7 @@ function handlePrintCertificate(){
     recipientAddress:certState.recipient.address,
     recipientPhone:certState.recipient.phone,
     recipientEmail:certState.recipient.email,
-    recipientGstin:certState.recipient.gstin||'',
-    showSignStamp:certState.showSignStamp
+    recipientGstin:certState.recipient.gstin||''
   });
 }
 
@@ -7325,8 +7287,7 @@ function handlePreviewCertificate(){
     recipientAddress:certState.recipient.address,
     recipientPhone:certState.recipient.phone,
     recipientEmail:certState.recipient.email,
-    recipientGstin:certState.recipient.gstin||'',
-    showSignStamp:document.getElementById('cert-show-sign-stamp').checked
+    recipientGstin:certState.recipient.gstin||''
   });
 }
 
@@ -7348,8 +7309,7 @@ async function reprintCertificate(certNo){
       items:items,remarks:c['Remarks']||'',
       recipientName:c['Recipient Name']||'',recipientAddress:c['Recipient Address']||'',
       recipientPhone:c['Recipient Phone']||'',recipientEmail:c['Recipient Email']||'',
-      recipientGstin:c['Recipient GSTIN']||'',
-      showSignStamp:c['Show Sign Stamp']!=='No'
+      recipientGstin:c['Recipient GSTIN']||''
     });
   }catch(e){showToast('Failed to load certificate for print.','error');}
 }
@@ -7379,8 +7339,7 @@ async function editCertificate(certNo){
       recipient:{name:c['Recipient Name']||'',address:c['Recipient Address']||'',phone:c['Recipient Phone']||'',email:c['Recipient Email']||'',gstin:c['Recipient GSTIN']||''},
       items:[],
       isSaved:true, buyerSearchTimeout:null,
-      editMode:true, originalCertNo:c['Cert No']||'',
-      showSignStamp:c['Show Sign Stamp']!=='No'
+      editMode:true, originalCertNo:c['Cert No']||''
     };
 
     document.getElementById('cert-no').value=certState.certNo;
@@ -7389,7 +7348,6 @@ async function editCertificate(certNo){
     document.getElementById('cert-valid-until').value=certState.validUntil;
     document.getElementById('cert-ref-no').value=certState.refNo;
     document.getElementById('cert-site').value=certState.site;
-    document.getElementById('cert-show-sign-stamp').checked=certState.showSignStamp;
     document.getElementById('cert-remarks').value=certState.remarks;
     document.getElementById('cert-recipient-name').value=certState.recipient.name;
     document.getElementById('cert-recipient-address').value=certState.recipient.address;
@@ -7435,10 +7393,9 @@ function printCertificateHtml(data){
   // Authorised Signatory block — only when BOTH are present; with just one
   // of the two, it falls back to showing that one on its own (signature
   // above the line, or the stamp stays in its separate seal circle below).
-  // Per-document opt-out, set on the New/Edit Certificate form when this
-  // certificate was saved — missing/undefined stays true so a certificate
-  // saved before this feature existed still prints its sign/stamp as before.
-  const showSignStamp = data.showSignStamp !== false;
+  // Tenant-level opt-out (Settings → Branding) — false only when explicitly
+  // turned off; missing/undefined stays true so existing tenants see no change.
+  const showSignStamp = COMPANY.showSignStamp !== false;
   const sigStampHtml = !showSignStamp ? '' : (COMPANY.stamp && COMPANY.signature)
     ? `<div style="position:relative;width:40mm;height:16mm;margin:0 auto;">
          <img src="${COMPANY.stamp}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-height:16mm;max-width:16mm;">
