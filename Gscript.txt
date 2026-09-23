@@ -71,7 +71,12 @@ const INVOICE_HEADERS = [
   'Buyer Address', 'Buyer GSTIN', 'Sub Total', 'CGST Rate', 'CGST Amount',
   'SGST Rate', 'SGST Amount', 'IGST Rate', 'IGST Amount', 'Tax Amount',
   'Grand Total', 'Items (JSON)', 'Saved By', 'Timestamp', 'Ship To (JSON)',
-  'Buyer State', 'State Code', 'Invoice PDF URL', 'Show Sign Stamp'
+  'Buyer State', 'State Code', 'Invoice PDF URL', 'Show Sign Stamp', 'Show GSTIN'
+];
+const CHALLAN_HEADERS = [
+  'Challan No', 'Date', 'Ref Invoice No', 'Buyer Name', 'Buyer Phone', 'Buyer Email',
+  'Buyer Address', 'Buyer GSTIN', 'Transport', 'Notes', 'Items (JSON)', 'Saved By', 'Timestamp',
+  'Show GSTIN'
 ];
 const TENANT_HEADERS = [
   'Tenant ID', 'Company Name', 'Address', 'GSTIN', 'State', 'State Code',
@@ -87,20 +92,20 @@ const AMC_HEADERS = [
 const QUOTATION_HEADERS = [
   'Quotation No', 'Date', 'Valid Until', 'Ref No', 'Buyer Name', 'Buyer Phone', 'Buyer Email',
   'Buyer Address', 'Buyer GSTIN', 'Buyer State', 'Sub Total', 'Tax Total', 'Grand Total',
-  'Notes', 'Items (JSON)', 'Saved By', 'Timestamp', 'Show Sign Stamp'
+  'Notes', 'Items (JSON)', 'Saved By', 'Timestamp', 'Show Sign Stamp', 'Show GSTIN'
 ];
 const CREDIT_DEBIT_NOTE_HEADERS = [
   'Note Type', 'Note No', 'Date', 'Against Invoice No', 'Against Invoice Date', 'Reason',
   'Buyer Name', 'Buyer Phone', 'Buyer Email', 'Buyer Address', 'Buyer GSTIN', 'Buyer State',
   'State Code', 'Sub Total', 'CGST Rate', 'CGST Amount', 'SGST Rate', 'SGST Amount',
   'IGST Rate', 'IGST Amount', 'Tax Amount', 'Grand Total', 'Items (JSON)', 'Saved By', 'Timestamp',
-  'Show Sign Stamp'
+  'Show Sign Stamp', 'Show GSTIN'
 ];
 const CERTIFICATE_HEADERS = [
   'Cert No', 'Cert Type', 'Issue Date', 'Valid Until', 'Ref No', 'Site',
   'Recipient Name', 'Recipient Address', 'Recipient Phone', 'Recipient Email',
   'Recipient GSTIN', 'Items (JSON)', 'Remarks', 'Saved By', 'Timestamp',
-  'Certificate PDF URL', 'Show Sign Stamp'
+  'Certificate PDF URL', 'Show Sign Stamp', 'Show GSTIN'
 ];
 const SUPER_ADMIN_SECRET_PROP = 'SUPER_ADMIN_SECRET';
 // Shared gate for every super-admin-portal action (provision/list/update/
@@ -360,10 +365,7 @@ function getSheet(name) {
     if (name === SHEET_INVOICES) {
       sheet.appendRow(INVOICE_HEADERS);
     } else if (name === SHEET_CHALLANS) {
-      sheet.appendRow([
-        'Challan No', 'Date', 'Ref Invoice No', 'Buyer Name', 'Buyer Phone', 'Buyer Email',
-        'Buyer Address', 'Buyer GSTIN', 'Transport', 'Notes', 'Items (JSON)', 'Saved By', 'Timestamp'
-      ]);
+      sheet.appendRow(CHALLAN_HEADERS);
     } else if (name === SHEET_BUYERS) {
       sheet.appendRow([
         'Name', 'Address', 'GSTIN', 'State', 'State Code', 'Phone', 'Email', 'Saved By', 'Timestamp'
@@ -404,6 +406,8 @@ function getSheet(name) {
     ensureHeadersOnce_(name, sheet, QUOTATION_HEADERS);
   } else if (name === SHEET_CREDIT_DEBIT_NOTES) {
     ensureHeadersOnce_(name, sheet, CREDIT_DEBIT_NOTE_HEADERS);
+  } else if (name === SHEET_CHALLANS) {
+    ensureHeadersOnce_(name, sheet, CHALLAN_HEADERS);
   }
   return sheet;
 }
@@ -1367,7 +1371,8 @@ function handleSaveChallan(body, username) {
     body.notes         || '',
     body.itemsJson     || '[]',
     username,
-    now
+    now,
+    (body.showGstin !== false) ? 'Yes' : 'No'
   ]);
 
   // ── AUTO EMAIL TRIGGER ───────────────────────────────────────────────────
@@ -1423,7 +1428,7 @@ function handleUpdateChallan(body, username) {
 
   const now = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
-  sheet.getRange(rowIdx + 1, 1, 1, 13).setValues([[
+  sheet.getRange(rowIdx + 1, 1, 1, CHALLAN_HEADERS.length).setValues([[
     newChallanNo,
     body.date          || '',
     body.refInvoiceNo  || '',
@@ -1436,7 +1441,8 @@ function handleUpdateChallan(body, username) {
     body.notes         || '',
     body.itemsJson     || '[]',
     username,
-    now
+    now,
+    (body.showGstin !== false) ? 'Yes' : 'No'
   ]]);
 
   cacheClear_(['getChallanNos', 'getChallansData']);
@@ -1545,7 +1551,8 @@ function handleAddInvoice(data, username) {
     data.buyerState   || '',
     data.stateCode    || '',
     '', // Invoice PDF URL — filled in lazily on first WhatsApp/Email send
-    (data.showSignStamp !== false) ? 'Yes' : 'No'
+    (data.showSignStamp !== false) ? 'Yes' : 'No',
+    (data.showGstin !== false) ? 'Yes' : 'No'
   ]);
 
   // ── AUTO EMAIL TRIGGER ───────────────────────────────────────────────────
@@ -1575,6 +1582,7 @@ function handleAddInvoice(data, username) {
     shipTo:       data.sameShip === false ? (data.shipTo || null) : null,
     taxMode:      data.taxMode      || 'auto',
     showSignStamp: data.showSignStamp !== false,
+    showGstin:    data.showGstin    !== false,
     items:        JSON.parse(itemsJson)   // parse back from the string we already built
   };
 
@@ -1650,7 +1658,8 @@ function handleUpdateInvoice(data, originalInvoiceNo, username) {
     data.stateCode    || '',
     '', // Invoice PDF URL — cleared on every edit so a stale cached PDF is
         // never handed out; the next WhatsApp/Email send regenerates it.
-    (data.showSignStamp !== false) ? 'Yes' : 'No'
+    (data.showSignStamp !== false) ? 'Yes' : 'No',
+    (data.showGstin !== false) ? 'Yes' : 'No'
   ]]);
 
   cacheClear_(['getInvoiceNos', 'getDashboard']);
@@ -2095,11 +2104,12 @@ var LedgerPrintGas = (function () {
         placeOfSupplyCode: data.stateCode || '',
         paymentTerms: data.paymentTerms || '', dueDate: data.dueDate || '',
         reverseCharge: !!data.reverseCharge,
-        // Per-document opt-out, set on the New/Edit form when this document
-        // was saved — NOT a tenant-wide setting. Missing/undefined stays
-        // true so a document saved before this feature existed still prints
-        // its sign/stamp exactly as before.
-        showSignStamp: data.showSignStamp !== false
+        // Per-document opt-outs, set on the New/Edit form when this document
+        // was saved — NOT tenant-wide settings. Missing/undefined stays true
+        // so a document saved before these features existed still prints
+        // exactly as before.
+        showSignStamp: data.showSignStamp !== false,
+        showGstin: data.showGstin !== false
       },
       lines: lines,
       intra: intra, invoiceRate: invoiceRate,
@@ -2214,7 +2224,7 @@ var LedgerPrintGas = (function () {
     }).join('') + '</tr>';
   }
 
-  function sellerBlock(s) {
+  function sellerBlock(s, showGstin) {
     function id(k, v) {
       return v ? '<div><span class="lbl">' + k + '</span><span class="bold">' + esc(v) + '</span></div>' : '';
     }
@@ -2222,7 +2232,7 @@ var LedgerPrintGas = (function () {
     return '<div class="inv-seller" style="height:' + GEO.sellerH + 'mm">' +
       (s.logo ? '<div class="logo"><img src="' + s.logo + '"></div>' : '') +
       '<div class="who"><h2>' + esc(s.name) + '</h2><p>' + addr + '</p></div>' +
-      '<div class="ids">' + id('GSTIN', s.gstin) + id('PAN', s.pan) + id('Phone', s.phone) +
+      '<div class="ids">' + (showGstin !== false ? id('GSTIN', s.gstin) : '') + id('PAN', s.pan) + id('Phone', s.phone) +
       id('Email', s.email) + id('Web', s.website) + '</div></div>';
   }
 
@@ -2469,7 +2479,7 @@ var LedgerPrintGas = (function () {
         '<h1>' + esc(DOC.title) + '</h1><span class="copy">' +
         esc(inv.kind === 'invoice' ? COPY_LABEL : DOC.copy) + '</span></div>' +
       (page.first
-        ? sellerBlock(inv.seller) + partiesBlock(inv) + stripBlock(inv)
+        ? sellerBlock(inv.seller, inv.meta.showGstin) + partiesBlock(inv) + stripBlock(inv)
         : '<div class="inv-strip" style="height:' + GEO.contStripH + 'mm">' +
             '<span><b>' + esc(inv.seller.name) + '</b><br>Invoice ' + esc(inv.meta.invoiceNo) +
             ' dated ' + esc(dmy(inv.meta.date)) + '</span>' +
@@ -3493,7 +3503,8 @@ function buildInvoicePayloadFromRow(headers, row, invoiceNo) {
     cgstAmount: inv['CGST Amount'] || 0, sgstAmount: inv['SGST Amount'] || 0, igstAmount: inv['IGST Amount'] || 0,
     shipTo: shipToEnvelope.sameShip === false ? (shipToEnvelope.shipTo || null) : null,
     taxMode: shipToEnvelope.taxMode || 'auto',
-    showSignStamp: inv['Show Sign Stamp'] !== 'No'
+    showSignStamp: inv['Show Sign Stamp'] !== 'No',
+    showGstin: inv['Show GSTIN'] !== 'No'
   };
 }
 
@@ -3816,7 +3827,8 @@ function handleSaveQuotation(body, username) {
     body.itemsJson   || '[]',
     username,
     now,
-    (body.showSignStamp !== false) ? 'Yes' : 'No'
+    (body.showSignStamp !== false) ? 'Yes' : 'No',
+    (body.showGstin !== false) ? 'Yes' : 'No'
   ]);
 
   // ── AUTO EMAIL ────────────────────────────────────────────────────────────
@@ -3838,6 +3850,7 @@ function handleSaveQuotation(body, username) {
       taxTotal:    parseFloat(body.taxTotal   || 0),
       grandTotal:  parseFloat(body.grandTotal || 0),
       notes:       body.notes       || '',
+      showGstin:   body.showGstin   !== false,
       items:       JSON.parse(body.itemsJson || '[]')
     };
     var emailResult = sendQuotationEmail(emailPayload);
@@ -3986,7 +3999,7 @@ function buildQuotationHtmlGas(data) {
           '<div style="margin-top:3px;">' + COMPANY.address + '</div>' +
           '<div style="margin-top:3px;"><span class="bold">Ph:</span> ' + COMPANY.phone + ' &nbsp;|&nbsp; <span class="bold">Email:</span> ' + COMPANY.email + '</div>' +
           '<div><span class="bold">Web:</span> ' + COMPANY.website + '</div>' +
-          '<div style="margin-top:3px;">GSTIN/UIN: <strong>' + COMPANY.gstin + '</strong></div>' +
+          (data.showGstin !== false ? '<div style="margin-top:3px;">GSTIN/UIN: <strong>' + COMPANY.gstin + '</strong></div>' : '') +
           '<div>State Name: <strong>' + COMPANY.state + '</strong>, Code: <strong>' + COMPANY.stateCode + '</strong></div>' +
         '</td>' +
         '<td width="50%" style="padding:0;">' +
@@ -4171,7 +4184,8 @@ function handleSaveCreditDebitNote(body, username) {
     itemsJson,
     username,
     now,
-    (data.showSignStamp !== false) ? 'Yes' : 'No'
+    (data.showSignStamp !== false) ? 'Yes' : 'No',
+    (data.showGstin !== false) ? 'Yes' : 'No'
   ]);
 
   // ── AUTO EMAIL ────────────────────────────────────────────────────────────
@@ -4181,6 +4195,7 @@ function handleSaveCreditDebitNote(body, username) {
     var emailPayload = {
       noteType:            noteType,
       noteNo:              noteNo,
+      showGstin:           data.showGstin !== false,
       date:                data.date               || '',
       againstInvoiceNo:    data.againstInvoiceNo   || '',
       againstInvoiceDate:  data.againstInvoiceDate || '',
@@ -4355,7 +4370,7 @@ function buildCreditDebitNoteHtmlGas(data) {
           '<div style="margin-top:3px;">' + COMPANY.address + '</div>' +
           '<div style="margin-top:3px;"><span class="bold">Ph:</span> ' + COMPANY.phone + ' &nbsp;|&nbsp; <span class="bold">Email:</span> ' + COMPANY.email + '</div>' +
           '<div><span class="bold">Web:</span> ' + COMPANY.website + '</div>' +
-          '<div style="margin-top:3px;">GSTIN/UIN: <strong>' + COMPANY.gstin + '</strong></div>' +
+          (data.showGstin !== false ? '<div style="margin-top:3px;">GSTIN/UIN: <strong>' + COMPANY.gstin + '</strong></div>' : '') +
           '<div>State Name: <strong>' + COMPANY.state + '</strong>, Code: <strong>' + COMPANY.stateCode + '</strong></div>' +
         '</td>' +
         '<td width="50%" style="padding:0;">' +
@@ -4855,7 +4870,8 @@ function handleSaveCertificate(body, username) {
       username,
       now,
       '', // Certificate PDF URL — filled in lazily on first WhatsApp/Email send
-      (body.showSignStamp !== false) ? 'Yes' : 'No'
+      (body.showSignStamp !== false) ? 'Yes' : 'No',
+      (body.showGstin !== false) ? 'Yes' : 'No'
     ]);
 
     cacheClear_(['getCertificates']);
@@ -4915,10 +4931,11 @@ function buildCertificateHtml(data) {
   var fmtD = certDmy(data.issueDate);
   var fmtV = data.validUntil ? certDmy(data.validUntil) : null;
 
-  // Per-document opt-out, set on the New/Edit Certificate form when this
+  // Per-document opt-outs, set on the New/Edit Certificate form when this
   // certificate was saved — missing/undefined stays true so a certificate
-  // saved before this feature existed still prints its sign/stamp as before.
+  // saved before these features existed still prints exactly as before.
   var showSignStamp = data.showSignStamp !== false;
+  var showGstin = data.showGstin !== false;
   var sigStampHtml = '';
   if (showSignStamp && COMPANY.stamp && COMPANY.signature) {
     sigStampHtml = '<div style="margin:0 auto 1mm;">' +
@@ -4974,8 +4991,8 @@ function buildCertificateHtml(data) {
     '.cert-items-table td{border:1px solid #ddd;padding:2mm 3mm;color:#222;vertical-align:top;}' +
     '.cert-issued-to{text-align:center;margin:5mm 0;}' +
     '.cert-issued-label{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:0.5px;}' +
-    '.cert-recipient{font-size:16px;font-weight:bold;color:#2A2660;margin:2mm 0;text-transform:uppercase;}' +
-    '.cert-recipient-addr{font-size:10px;color:#444;}' +
+    '.cert-recipient{font-size:26px;font-weight:bold;color:#2A2660;margin:2mm 0;text-transform:uppercase;}' +
+    '.cert-recipient-addr{font-size:14px;color:#444;}' +
     '.cert-meta{display:flex;justify-content:space-between;margin:4mm 0;font-size:10px;}' +
     '.cert-meta-item{text-align:center;}' +
     '.cert-meta-label{color:#777;text-transform:uppercase;letter-spacing:0.4px;font-size:9px;}' +
@@ -4997,7 +5014,7 @@ function buildCertificateHtml(data) {
         '<div class="cert-header-text">' +
           '<div class="cert-company">' + certEsc(COMPANY.name || '') + '</div>' +
           '<div class="cert-company-sub">' + certEsc(COMPANY.address || '') + '</div>' +
-          '<div class="cert-company-sub">Ph: ' + certEsc(COMPANY.phone || '') + ' &nbsp;|&nbsp; GSTIN: ' + certEsc(COMPANY.gstin || '') + '</div>' +
+          '<div class="cert-company-sub">Ph: ' + certEsc(COMPANY.phone || '') + (showGstin && COMPANY.gstin ? ' &nbsp;|&nbsp; GSTIN: ' + certEsc(COMPANY.gstin) : '') + '</div>' +
           '<div class="cert-title">Certificate</div>' +
           '<div class="cert-type">' + certEsc(data.certType || 'Refilling') + '</div>' +
         '</div>' +
@@ -5088,7 +5105,8 @@ function buildCertificatePayloadFromRow(headers, row, certNo) {
     recipientPhone: c['Recipient Phone'] || '', recipientEmail: c['Recipient Email'] || '',
     recipientGstin: c['Recipient GSTIN'] || '',
     items: items, remarks: c['Remarks'] || '',
-    showSignStamp: c['Show Sign Stamp'] !== 'No'
+    showSignStamp: c['Show Sign Stamp'] !== 'No',
+    showGstin: c['Show GSTIN'] !== 'No'
   };
 }
 
